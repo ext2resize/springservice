@@ -1,0 +1,67 @@
+properties([
+    parameters([
+        choice(name: 'choosenBranch', choices: ['master','dev'].join('\n'), description: 'Please Choose Branch!'),
+    ])
+])
+String gitUrl = "git@github.com:alican-uzun/springbootdeployment.git"
+String branch = "main"
+String deployTo = "legacy-prod"
+
+String serviceName = "bitaksi-ivr"
+String environment = "prod"
+boolean passed = true
+
+timestamps() {
+    try{
+        node {
+            stage('Git checkout'){
+                checkout([$class: 'GitSCM', branches: [[name: "*/master"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'devops-github-creds', url: "${gitUrl}"]]]) 
+            }
+            stage('Run deployment playbook'){
+                dir("ansible-playbooks/prod/"){
+                    ansiblePlaybook(
+                        playbook: 'ivr_deploy.yml',
+                        inventory: '../hosts',
+                        extraVars:[
+                            deployTo: "${deployTo}",
+                            branch: "${branch}"
+                        ],
+                    )
+                }
+            }
+        }
+    } catch(Exception e) {
+        passed = false
+    } finally {
+        if (!passed){
+            slackSend channel: 'jenkins-devops',
+                          color:    'danger',
+                          message:  ":smoking:*FAILURE!!*:smoking:\n\n" +
+                                    "*Job Name:* ${env.JOB_NAME}\n" + 
+                                    "*Build No:* ${env.BUILD_NUMBER}\n" +
+                                    "*Environment:* ${environment}\n" +
+                                    "*Service Name:* ${serviceName}\n" +
+                                    "*Branch:* ${choosenBranch}\n" +
+                                    "*Full details:* <${env.BUILD_URL}|Job Link>", 
+                          teamDomain: 'BiTaksi'
+            
+            currentBuild.result = 'FAILURE'
+            return
+        }
+        else {
+            slackSend channel: 'jenkins-devops',
+                          color:   'good',
+                          message: ":tada:*SUCCESS!!*:tada:\n\n" +
+                                   "*Job Name:* ${env.JOB_NAME}\n" + 
+                                   "*Build No:* ${env.BUILD_NUMBER}\n" +
+                                   "*Environment:* ${environment}\n" +
+                                   "*Service Name:* ${serviceName}\n" +
+                                   "*Branch:* ${choosenBranch}\n" +
+                                   "*Full details:* <${env.BUILD_URL}|Job Link>", 
+                          teamDomain: 'BiTaksi'
+            
+            currentBuild.result = 'SUCCESS'
+            return
+        }
+    }
+}
