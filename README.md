@@ -8,4 +8,4 @@ EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 ```
 With this ☝️ Dockerfile, the size of the image is ~447MB \
-With the Dockerfile of this repo, the size of the image is ~76MB
+With the [Dockerfile](https://github.com/alican-uzun/springservice/blob/master/Dockerfile "Dockerfile") of this repo, the size of the image is ~76MB
