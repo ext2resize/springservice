@@ -1,67 +1,91 @@
 properties([
     parameters([
-        choice(name: 'choosenBranch', choices: ['master','dev'].join('\n'), description: 'Please Choose Branch!'),
+        [
+            $class: 'ChoiceParameter',
+            choiceType: 'PT_SINGLE_SELECT',
+            description: '',
+            filterLength: 1,
+            filterable: true,
+            name: 'choosenTag',
+            script: [
+                $class: 'GroovyScript',
+                fallbackScript: [
+                    classpath: [],
+                    sandbox: false,
+                    script: 'return["There is no tag!"]'
+                ],
+                script: [
+                classpath: [],
+                sandbox: true,
+                script: ''' def fetchTagsCmd = "bash /var/lib/jenkins/bash-scripts/fetch-tag.sh springservice github"  
+                            def fetchTagsCmdStdout = fetchTagsCmd.execute()
+                            def strBufferFetchTags = new StringBuffer()
+                            fetchTagsCmdStdout.consumeProcessErrorStream(strBufferFetchTags)
+                            def fetchedTags = fetchTagsCmdStdout.text.readLines()
+                            return fetchedTags.sort().reverse()
+                        '''
+                ]
+            ]
+        ]
     ])
 ])
-String gitUrl = "git@github.com:alican-uzun/springbootdeployment.git"
-String branch = "main"
-String deployTo = "legacy-prod"
 
-String serviceName = "bitaksi-ivr"
-String environment = "prod"
-boolean passed = true
+String tag = "${choosenTag}"
+if(!choosenTag){
+    tag = "master"
+}
+String registry = "alicanuzun/springservice"
+String chartPath = "applications"
+String currentContext = "production"
+String serviceName = "springservice"
+String environment = "production"
 
 timestamps() {
-    try{
         node {
             stage('Git checkout'){
-                checkout([$class: 'GitSCM', branches: [[name: "*/master"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'devops-github-creds', url: "${gitUrl}"]]]) 
+                checkout scm: [
+                        $class: 'GitSCM', 
+                        userRemoteConfigs: [
+                            [
+                                credentialsId: 'GitHub-Spring-Credential',
+                                url: 'git@github.com:alican-uzun/springservice.git'
+                            ]
+                        ], 
+                        branches: [
+                            [
+                                name: "${tag}"
+                            ]
+                        ]
+                    ],poll: false
             }
-            stage('Run deployment playbook'){
-                dir("ansible-playbooks/prod/"){
-                    ansiblePlaybook(
-                        playbook: 'ivr_deploy.yml',
-                        inventory: '../hosts',
-                        extraVars:[
-                            deployTo: "${deployTo}",
-                            branch: "${branch}"
-                        ],
-                    )
+            stage("Login to DockerHub"){
+                withCredentials([usernamePassword(credentialsId: 'DockerHub-Credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]){
+                    sh('docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_PASSWORD')
                 }
             }
-        }
-    } catch(Exception e) {
-        passed = false
-    } finally {
-        if (!passed){
-            slackSend channel: 'jenkins-devops',
-                          color:    'danger',
-                          message:  ":smoking:*FAILURE!!*:smoking:\n\n" +
-                                    "*Job Name:* ${env.JOB_NAME}\n" + 
-                                    "*Build No:* ${env.BUILD_NUMBER}\n" +
-                                    "*Environment:* ${environment}\n" +
-                                    "*Service Name:* ${serviceName}\n" +
-                                    "*Branch:* ${choosenBranch}\n" +
-                                    "*Full details:* <${env.BUILD_URL}|Job Link>", 
-                          teamDomain: 'BiTaksi'
-            
-            currentBuild.result = 'FAILURE'
-            return
-        }
-        else {
-            slackSend channel: 'jenkins-devops',
-                          color:   'good',
-                          message: ":tada:*SUCCESS!!*:tada:\n\n" +
-                                   "*Job Name:* ${env.JOB_NAME}\n" + 
-                                   "*Build No:* ${env.BUILD_NUMBER}\n" +
-                                   "*Environment:* ${environment}\n" +
-                                   "*Service Name:* ${serviceName}\n" +
-                                   "*Branch:* ${choosenBranch}\n" +
-                                   "*Full details:* <${env.BUILD_URL}|Job Link>", 
-                          teamDomain: 'BiTaksi'
-            
-            currentBuild.result = 'SUCCESS'
-            return
+            stage("Docker Build"){
+                sh "docker build -t ${registry}/${serviceName}:${tag} ."
+            }
+            stage("Push Image to the Docker Hub"){
+                sh """
+                    docker push ${registry}/${serviceName}:${tag}
+                """
+            }
+            stage('Helm Charts Git checkout'){
+                git branch: "master",
+                    credentialsId: 'GitHub-Helm-Charts-Credential',
+                    url: 'git@github.com:alican-uzun/helm-charts.git'
+            }
+            stage("Change AppVersion in Helm Chart"){
+                sh  "bash /var/lib/jenkins/bash-scripts/change-app-version.sh ${serviceName} ${tag}"
+            }
+            stage("Deploy on K8S Cluster"){
+                sh  "helm upgrade --install " +
+                    "${serviceName} ${chartPath}/${serviceName} -f ${chartPath}/${serviceName}/${environment}/values.yaml " + 
+                    "--set image.tag=${tag} " +
+                    "--set image.repository=${registry}/${serviceName} " +
+                    "--namespace=${environment} " +
+                    "--kube-context=${currentContext}"
         }
     }
 }
