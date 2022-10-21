@@ -10,25 +10,23 @@ properties([
             script: [
                 $class: 'GroovyScript',
                 fallbackScript: [
-                    classpath: [
-
-                    ],
-                    sandbox: false,
-                    script: 'return["There is no tag!"]'
+                classpath: [
+                    
+                ],
+                sandbox: false,
+                script: 'return["There is no branch name!"]'
                 ],
                 script: [
                 classpath: [
                     
                 ],
                 sandbox: true,
-                script: ''' 
-                def fetchTagsCmd = "bash /var/lib/jenkins/bash-scripts/fetch-tag.sh springservice"
-                def fetchTagsCmdStdout = fetchTagsCmd.execute()
-                def strBufferFetchTags = new StringBuffer()
-                fetchTagsCmdStdout.consumeProcessErrorStream(strBufferFetchTags)
-                def fetchedTags = fetchTagsCmdStdout.text.readLines()
-                return fetchedTags.sort().reverse()
-                '''
+                script: '''def fetchTagsCmd = "bash /var/lib/jenkins/bash-scripts/fetch-tag.sh springservice"  
+def fetchTagsCmdStdout = fetchTagsCmd.execute() 
+def strBufferFetchTags = new StringBuffer() 
+fetchTagsCmdStdout.consumeProcessErrorStream(strBufferFetchTags)  
+def fetchedTags = fetchTagsCmdStdout.text.readLines()  
+return fetchedTags.sort().reverse()'''
                 ]
             ]
         ]
@@ -39,6 +37,7 @@ String tag = "${choosenTag}"
 if(!choosenTag){
     tag = "master"
 }
+
 String registry = "alicanuzun/springservice"
 String chartPath = "applications"
 String currentContext = "production"
