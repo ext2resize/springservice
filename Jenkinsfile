@@ -10,20 +10,25 @@ properties([
             script: [
                 $class: 'GroovyScript',
                 fallbackScript: [
-                    classpath: [],
+                    classpath: [
+
+                    ],
                     sandbox: false,
                     script: 'return["There is no tag!"]'
                 ],
                 script: [
-                classpath: [],
+                classpath: [
+                    
+                ],
                 sandbox: true,
-                script: ''' def fetchTagsCmd = "bash /var/lib/jenkins/bash-scripts/fetch-tag.sh springservice"
-                            def fetchTagsCmdStdout = fetchTagsCmd.execute()
-                            def strBufferFetchTags = new StringBuffer()
-                            fetchTagsCmdStdout.consumeProcessErrorStream(strBufferFetchTags)
-                            def fetchedTags = fetchTagsCmdStdout.text.readLines()
-                            return fetchedTags.sort().reverse()
-                        '''
+                script: ''' 
+                def fetchTagsCmd = "bash /var/lib/jenkins/bash-scripts/fetch-tag.sh springservice"
+                def fetchTagsCmdStdout = fetchTagsCmd.execute()
+                def strBufferFetchTags = new StringBuffer()
+                fetchTagsCmdStdout.consumeProcessErrorStream(strBufferFetchTags)
+                def fetchedTags = fetchTagsCmdStdout.text.readLines()
+                return fetchedTags.sort().reverse()
+                '''
                 ]
             ]
         ]
