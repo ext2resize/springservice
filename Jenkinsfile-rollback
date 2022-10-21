@@ -78,7 +78,7 @@ return fetchedRevisions.reverse()'''
 def targetHelmRevision
 def dateRevision
 def revisionTag
-String environment = "production"
+String environment = ${params.SelectedEnv}
 
 timestamps() {
         node {
