@@ -1,9 +1,3 @@
-parameters {
-    gitParameter name: 'tag',
-                    type: 'PT_TAG',
-                    defaultValue: 'origin/master'
-}
-
 String tag = "${params.tag}"
 String registry = "alicanuzun/springservice"
 String chartPath = "applications"
