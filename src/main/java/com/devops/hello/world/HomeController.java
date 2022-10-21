@@ -23,6 +23,6 @@ public class HomeController{
             System.out.println(testId);
             System.out.println(testName);
 
-            return ResponseEntity.ok("This is testId: " + testId + "  |  " + " This is testName: " + testName + " This is version v1.0.0");
+            return ResponseEntity.ok("This is testId: " + testId + "  |  " + " This is testName: " + testName + " This is version v1.0.1");
     }
 }
