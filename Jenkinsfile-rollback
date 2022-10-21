@@ -1,0 +1,107 @@
+properties([
+      [
+          $class: 'RebuildSettings', 
+          autoRebuild: false, 
+          rebuildDisabled: false
+          ], 
+          parameters([
+          [
+              $class: 'ChoiceParameter', 
+              choiceType: 'PT_SINGLE_SELECT', 
+              description: 'K8s Namespace',
+              filterLength: 1, 
+              filterable: false, 
+              name: 'SelectedEnv', 
+              script: [
+                  $class: 'GroovyScript', 
+                  fallbackScript: [
+                      classpath: [], 
+                      sandbox: true, 
+                      script: 'return["production"]'], 
+                      script: [
+                          classpath: [], 
+                          sandbox: true, 
+                          script: '''return["production"]'''
+              ]]], [
+            $class: 'CascadeChoiceParameter', 
+              choiceType: 'PT_SINGLE_SELECT', 
+              filterLength: 1, 
+              filterable: true, 
+              name: 'ServiceName', 
+              script: [
+                  $class: 'GroovyScript',
+              fallbackScript: [
+                  classpath: [],
+                  sandbox: true, 
+                  script: 'return ["I can not show services right now!"]'],
+              script: [
+                  classpath: [],
+                  sandbox: true,
+                  script: '''
+def fetchServicesCmd = "bash /var/lib/jenkins/bash-scripts/fetch-services.sh"
+fetchServicesCmdStdout = fetchServicesCmd.execute()
+def strBufferFetchServices = new StringBuffer()
+fetchServicesCmdStdout.consumeProcessErrorStream(strBufferFetchServices)
+
+def fetchedServices = fetchServicesCmdStdout.text.readLines()
+
+return fetchedServices.sort()'''
+              ]]], [
+            $class: 'CascadeChoiceParameter', 
+              choiceType: 'PT_SINGLE_SELECT', 
+              filterLength: 1, 
+              filterable: true, 
+              name: 'Revision', 
+              referencedParameters: 'ServiceName, SelectedEnv',
+              script: [
+                  $class: 'GroovyScript', 
+              fallbackScript: [
+                  classpath: [],
+                  sandbox: true, 
+                  script: 'return ["There is no revision history!"]'],
+              script: [
+                  classpath: [], 
+                  sandbox: true,
+                  script: '''def environment = SelectedEnv
+def serviceName = ServiceName
+
+def fetchRevisionsCmd = "bash /var/lib/jenkins/bash-scripts/fetch-revision.sh ${environment} ${serviceName}"
+def fetchRevisionsCmdStdout = fetchRevisionsCmd.execute()
+def strBufferFetchRevisions = new StringBuffer()
+fetchRevisionsCmdStdout.consumeProcessErrorStream(strBufferFetchRevisions)
+
+def fetchedRevisions = fetchRevisionsCmdStdout.text.readLines()
+
+return fetchedRevisions.reverse()'''
+              ]]]])])
+
+def targetHelmRevision
+def dateRevision
+def revisionTag
+String environment = "production"
+
+timestamps() {
+        node {
+            stage('Take Parameters') {
+                    script {
+                        targetHelmRevision = sh(script: 
+                        "echo ${params.Revision} | awk {'print \$1;'}"
+                        , returnStdout: true).trim()
+                        dateRevision = sh(script:
+                        "echo ${params.Revision} | awk '{print \$2, \$3, \$4, \$5, \$6;'}"
+                        , returnStdout: true).trim()
+                        revisionTag = sh(script:
+                        "echo ${params.Revision} | awk '{print \$7;'}"
+                        , returnStdout: true).trim()
+                        sh """
+                        echo 'Rolling back the ${params.ServiceName} in ${params.SelectedEnv} environment to the version ${revisionTag} with the date of ${dateRevision}.'
+                        """
+                    }
+            }
+            stage('Execute Rollback') {
+                sh """
+                helm rollback -n ${params.SelectedEnv} ${params.ServiceName} ${targetHelmRevision}
+                """
+            }
+        }
+    }
