@@ -17,7 +17,7 @@ properties([
                 script: [
                 classpath: [],
                 sandbox: true,
-                script: ''' def fetchTagsCmd = "bash /var/lib/jenkins/bash-scripts/fetch-tag.sh springservice github"  
+                script: ''' def fetchTagsCmd = "bash /var/lib/jenkins/bash-scripts/fetch-tag.sh springservice"
                             def fetchTagsCmdStdout = fetchTagsCmd.execute()
                             def strBufferFetchTags = new StringBuffer()
                             fetchTagsCmdStdout.consumeProcessErrorStream(strBufferFetchTags)
