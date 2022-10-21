@@ -44,7 +44,7 @@ def strBufferFetchTags = new StringBuffer()
 fetchTagsCmdStdout.consumeProcessErrorStream(strBufferFetchTags)
 def fetchedServices = fetchTagsCmdStdout.text.readLines()
 return fetchedServices.sort()'''
-]]]
+          ])])
 
 String tag = "${choosenTag}"
 String registry = "alicanuzun/springservice"
