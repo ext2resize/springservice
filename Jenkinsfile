@@ -1,37 +1,8 @@
-properties([
-    parameters([
-        [
-            $class: 'ChoiceParameter',
-            choiceType: 'PT_SINGLE_SELECT',
-            description: '',
-            filterLength: 1,
-            filterable: true,
-            name: 'choosenTag',
-            script: [
-                $class: 'GroovyScript',
-                fallbackScript: [
-                classpath: [
-                    
-                ],
-                sandbox: false,
-                script: 'return["There is no branch name!"]'
-                ],
-                script: [
-                classpath: [
-                    
-                ],
-                sandbox: true,
-                script: '''def fetchTagsCmd = "bash /var/lib/jenkins/bash-scripts/fetch-tag.sh springservice"  
-def fetchTagsCmdStdout = fetchTagsCmd.execute() 
-def strBufferFetchTags = new StringBuffer() 
-fetchTagsCmdStdout.consumeProcessErrorStream(strBufferFetchTags)  
-def fetchedTags = fetchTagsCmdStdout.text.readLines()  
-return fetchedTags.sort().reverse()'''
-                ]
-            ]
-        ]
-    ])
-])
+parameters {
+    gitParameter name: 'choosenTag',
+                    type: 'PT_TAG',
+                    defaultValue: 'origin/master'
+}
 
 String tag = "${choosenTag}"
 String registry = "alicanuzun/springservice"
