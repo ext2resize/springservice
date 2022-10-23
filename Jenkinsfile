@@ -49,8 +49,7 @@ timestamps() {
                     "${serviceName} ${chartPath}/${serviceName} -f ${chartPath}/${serviceName}/${environment}/values.yaml " + 
                     "--set image.tag=${tag} " +
                     "--set image.repository=${registry}/${serviceName} " +
-                    "--namespace=${environment} " +
-                    "--kube-context=${currentContext}"
+                    "--namespace=${environment} "
         }
     }
 }
