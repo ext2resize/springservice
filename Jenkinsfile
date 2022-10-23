@@ -29,11 +29,11 @@ timestamps() {
                 }
             }
             stage("Docker Build"){
-                sh "docker build -t ${registry}/${serviceName}:${tag} ."
+                sh "docker build -t ${registry}:${tag} ."
             }
             stage("Push Image to the Docker Hub"){
                 sh """
-                    docker push ${registry}/${tag}
+                    docker push ${registry}:${tag}
                 """
             }
             stage('Helm Charts Git checkout'){
